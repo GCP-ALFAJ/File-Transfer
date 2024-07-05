@@ -22,7 +22,12 @@ public class NwServer {
             System.out.println("Connected");
             dataInputStream = new DataInputStream(clientSocket.getInputStream());
             dataOutputStream = new DataOutputStream(clientSocket.getOutputStream());
-            receiveFile("NewFile1.pdf");
+            
+            int numberOfFiles = dataInputStream.readInt(); // Read number of files
+            for (int i = 0; i < numberOfFiles; i++) {
+                String fileName = dataInputStream.readUTF(); // Read file name
+                receiveFile(fileName);
+            }
 
             dataInputStream.close();
             dataOutputStream.close();
@@ -35,7 +40,7 @@ public class NwServer {
     private static void receiveFile(String fileName) throws Exception {
         try {
             long size = dataInputStream.readLong();
-            System.out.println("File size: " + size);
+            System.out.println("Receiving file: " + fileName + " (Size: " + size + " bytes)");
             byte[] buffer = new byte[4 * 1024];
             long received = 0;
             int bytes;
@@ -55,7 +60,7 @@ public class NwServer {
             }
 
             fileOutputStream.close();
-            System.out.println("File is Received");
+            System.out.println("File is Received: " + fileName);
         } catch (Exception e) {
             e.printStackTrace();
         }

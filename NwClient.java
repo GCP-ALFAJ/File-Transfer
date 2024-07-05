@@ -11,7 +11,7 @@ public class NwClient {
     private static DataOutputStream dataOutputStream = null;
     private static DataInputStream dataInputStream = null;
     private static String ipAddress;
-    private static File selectedFile;
+    private static File[] selectedFiles;
     private static Socket clientSocket;
     private static JProgressBar progressBar;
 
@@ -54,24 +54,25 @@ public class NwClient {
             add(ipAddressPanel);
 
             fileChooser = new JFileChooser();
-            JButton selectFileButton = new JButton("Select File");
+            fileChooser.setMultiSelectionEnabled(true); // Allow multiple file selection
+            JButton selectFileButton = new JButton("Select Files");
             selectFileButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     int returnValue = fileChooser.showOpenDialog(null);
                     if (returnValue == JFileChooser.APPROVE_OPTION) {
-                        selectedFile = fileChooser.getSelectedFile();
+                        selectedFiles = fileChooser.getSelectedFiles();
                     }
                 }
             });
             add(selectFileButton);
 
-            JButton sendFileButton = new JButton("Send File");
+            JButton sendFileButton = new JButton("Send Files");
             sendFileButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    if (selectedFile != null) {
-                        new Thread(() -> sendSelectedFile(selectedFile)).start();
+                    if (selectedFiles != null && selectedFiles.length > 0) {
+                        new Thread(() -> sendSelectedFiles(selectedFiles)).start();
                     }
                 }
             });
@@ -93,31 +94,33 @@ public class NwClient {
             }
         }
 
-        private void sendSelectedFile(File file) {
+        private void sendSelectedFiles(File[] files) {
             try {
-                byte[] fileData = Files.readAllBytes(file.toPath());
-                dataOutputStream.writeLong(fileData.length);
-                dataOutputStream.write(fileData, 0, fileData.length);
-                dataOutputStream.flush();
+                dataOutputStream.writeInt(files.length); // Send number of files
+                for (File file : files) {
+                    byte[] fileData = Files.readAllBytes(file.toPath());
+                    dataOutputStream.writeUTF(file.getName()); // Send file name
+                    dataOutputStream.writeLong(fileData.length); // Send file size
 
-                long totalBytes = fileData.length;
-                long bytesSent = 0;
-                int bytes;
-                byte[] buffer = new byte[4 * 1024];
-                InputStream fileInputStream = new FileInputStream(file);
-                
-                while ((bytes = fileInputStream.read(buffer)) != -1) {
-                    dataOutputStream.write(buffer, 0, bytes);
-                    bytesSent += bytes;
-                    int progress = (int) ((bytesSent * 100) / totalBytes);
-                    progressBar.setValue(progress);
+                    long totalBytes = fileData.length;
+                    long bytesSent = 0;
+                    int bytes;
+                    byte[] buffer = new byte[4 * 1024];
+                    InputStream fileInputStream = new FileInputStream(file);
+
+                    while ((bytes = fileInputStream.read(buffer)) != -1) {
+                        dataOutputStream.write(buffer, 0, bytes);
+                        bytesSent += bytes;
+                        int progress = (int) ((bytesSent * 100) / totalBytes);
+                        progressBar.setValue(progress);
+                    }
+
+                    fileInputStream.close();
+                    dataOutputStream.flush();
+                    System.out.println("File sent: " + file.getName());
                 }
 
-                fileInputStream.close();
-                dataOutputStream.flush();
-                System.out.println("File sent: " + file.getName());
-
-                
+                // Close the socket after sending all files
                 dataInputStream.close();
                 dataOutputStream.close();
                 clientSocket.close();
