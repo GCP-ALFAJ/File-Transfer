@@ -4,8 +4,7 @@ import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import javax.swing.*; 
+import javax.swing.*;
 
 public class NwClient {
 
@@ -14,6 +13,7 @@ public class NwClient {
     private static String ipAddress;
     private static File selectedFile;
     private static Socket clientSocket;
+    private static JProgressBar progressBar;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -35,7 +35,7 @@ public class NwClient {
         private void createAndShowGUI() {
             setTitle("Client");
             setSize(400, 200);
-            setLayout(new GridLayout(3, 1));
+            setLayout(new GridLayout(4, 1));
 
             JPanel ipAddressPanel = new JPanel();
             ipAddressPanel.add(new JLabel("IP Address:"));
@@ -76,6 +76,10 @@ public class NwClient {
                 }
             });
             add(sendFileButton);
+
+            progressBar = new JProgressBar(0, 100);
+            progressBar.setStringPainted(true);
+            add(progressBar);
         }
 
         private void connectToServer() {
@@ -95,9 +99,25 @@ public class NwClient {
                 dataOutputStream.writeLong(fileData.length);
                 dataOutputStream.write(fileData, 0, fileData.length);
                 dataOutputStream.flush();
+
+                long totalBytes = fileData.length;
+                long bytesSent = 0;
+                int bytes;
+                byte[] buffer = new byte[4 * 1024];
+                InputStream fileInputStream = new FileInputStream(file);
+                
+                while ((bytes = fileInputStream.read(buffer)) != -1) {
+                    dataOutputStream.write(buffer, 0, bytes);
+                    bytesSent += bytes;
+                    int progress = (int) ((bytesSent * 100) / totalBytes);
+                    progressBar.setValue(progress);
+                }
+
+                fileInputStream.close();
+                dataOutputStream.flush();
                 System.out.println("File sent: " + file.getName());
 
-                // Close the socket after sending the file
+                
                 dataInputStream.close();
                 dataOutputStream.close();
                 clientSocket.close();

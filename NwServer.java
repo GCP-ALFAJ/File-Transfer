@@ -1,12 +1,21 @@
+import java.awt.*;
 import java.io.*;
 import java.net.*;
+import javax.swing.*;
 
 public class NwServer {
 
     private static DataOutputStream dataOutputStream = null;
     private static DataInputStream dataInputStream = null;
+    private static JProgressBar progressBar;
 
     public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new ServerFrame();
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setVisible(true);
+        });
+
         try (ServerSocket serverSocket = new ServerSocket(900)) {
             System.out.println("Server is Starting in Port 900");
             Socket clientSocket = serverSocket.accept();
@@ -40,12 +49,31 @@ public class NwServer {
                 }
                 fileOutputStream.write(buffer, 0, bytes);
                 received += bytes;
+
+                int progress = (int) ((received * 100) / size);
+                progressBar.setValue(progress);
             }
 
             fileOutputStream.close();
             System.out.println("File is Received");
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public static class ServerFrame extends JFrame {
+        public ServerFrame() {
+            createAndShowGUI();
+        }
+
+        private void createAndShowGUI() {
+            setTitle("Server");
+            setSize(400, 100);
+            setLayout(new GridLayout(1, 1));
+
+            progressBar = new JProgressBar(0, 100);
+            progressBar.setStringPainted(true);
+            add(progressBar);
         }
     }
 }
